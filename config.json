@@ -1,0 +1,21 @@
+{
+    "saved_networks": [{
+        "ssid": "Jimbo's Hotspot",
+        "password": "753273DCBA",
+        "attempts": 5,
+        "timeout_msec": 10000
+    },
+    {
+        "ssid": "WiFi-5E80_EXT",
+        "password": "753273DCBA",
+        "attempts": 3,
+        "timeout_msec": 10000
+    }],
+    "server_info": {
+        "ip": "192.168.1.202",
+        "client_port": "5001",
+        "socket_port": "5000",
+        "socket_endpoint": "/pico/",
+        "socket_delay_ms": 5
+    }
+}
