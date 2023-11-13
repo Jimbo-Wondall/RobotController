@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+	<title>Robot Controller</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			text-align: center;
+			margin: 0;
+			padding: 0;
+			background-color: #f0f0f0;
+		}
+
+		.grid-container {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+		}
+
+		.grid-item {
+			background-color: #ddd;
+			padding: 20px;
+			text-align: center;
+			border: 1px solid #444;
+		}
+
+		.grid-item:active {
+			background-color: #bbb;
+		}
+
+		.queue-control {
+			display: flex;
+			justify-content: center;
+		}
+
+		.queue-action {
+			display: block;
+			justify-content: left;
+		}
+
+		.queue-list {
+			margin: 20px;
+			border: 2px solid #444;
+			border-radius: 8px;
+			padding: 10px;
+		}
+
+		.container {
+			display: grid;
+			grid-template-columns: 1fr 1.1fr 0.9fr;
+			grid-template-rows: 0.8fr 0.4fr 1.8fr;
+			gap: 0px 0px;
+			grid-auto-flow: row;
+		}
+
+		.map {
+			grid-area: 2 / 1 / 4 / 3;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.queue {
+			grid-area: 2 / 3 / 4 / 4;
+		}
+
+		.miscellaneous {
+			display: flex;
+			grid-area: 1 / 1 / 2 / 4;
+		}
+
+		.queue-controls {
+			grid-area: 2 / 3 / 3 / 4;
+		}
+
+		.queue-items {
+			grid-area: 3 / 3 / 4 / 4;
+		}
+
+		.misc-controls {
+			width: min-content;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container">
+		<div class="map">
+			<h2>Movement Control</h2>
+			<div class="grid-container">
+				<div class="grid-item" onclick="move('FORWARD_LEFT')">&#8598;</div>
+				<div class="grid-item" onclick="move('FORWARD')">&#8593;</div>
+				<div class="grid-item" onclick="move('FORWARD_RIGHT')">&#8599;</div>
+				<div class="grid-item" onclick="move('ROTATE_LEFT')">&#8612;</div>
+				<div class="grid-item" onclick="stop()"></div>
+				<div class="grid-item" onclick="move('ROTATE_RIGHT')">&#8614;</div>
+				<div class="grid-item" onclick="move('BACK_LEFT')">&#8601;</div>
+				<div class="grid-item" onclick="move('BACK')">&#8595;</div>
+				<div class="grid-item" onclick="move('BACK_RIGHT')">&#8600;</div>
+			</div>
+		</div>
+		<div class="queue"></div>
+		<div class="miscellaneous">
+			<div class="misc-controls">
+				<div class="control-row">
+					<button onclick="setLED(true)">LED On</button>
+					<button onclick="setLED(false)">LED Off</button>
+				</div>
+				<div class="control-row">
+					<input type="number" placeholder="Red"></input>
+					<input type="number" placeholder="Green"></input>
+					<input type="number" placeholder="Blue"></input>
+					<button>Set RGB</button>
+				</div>
+				<div class="control-row">
+					<input type="number" placeholder="Frequency"></input>
+					<input type="number" placeholder="Volume"></input>
+					<input type="number" placeholder="Duration"></input>
+					<button>Beep</button>
+					<div class="control-row">
+						<button onclick="sendScan()">Scan</button>
+						<textarea id="distance"></textarea>
+					</div>
+				</div>
+				<div class="control-row">
+					<button>Move Servo</button>
+					<input type="number" placeholder="Angle"></input>
+					<input type="number" placeholder="Frequency"></input>
+				</div>
+				<div class="control-row">
+					<div class="slider"><input type="range" min="0.0" max="1.0" step="0.01" value="1.0"
+							oninput="rangeValue.innerText = this.value">
+						<p id="speed">1.0</p>
+					</div>
+				</div>
+			</div>
+			<div class="execute-code">
+				<h2>Execute Code</h2>
+				<textarea id="code-input" rows="10" cols="50"></textarea><br />
+				<button class="button" onclick="executeCode()">Send Code</button>
+			</div>
+		</div>
+		<div class="queue-controls">
+			<h2>Queue Control</h2>
+			<div class="queue-control">
+				<button class="button" onclick="queueControl('pause')">
+					<i class="fas fa-pause"></i>
+				</button>
+				<button class="button" onclick="queueControl('resume')">
+					<i class="fas fa-play"></i>
+				</button>
+				<button class="button" onclick="queueControl('stop')">
+					<i class="fas fa-stop"></i>
+				</button>
+				<button class="button" onclick="queueControl('delete')">
+					<i class="fas fa-trash"></i>
+				</button>
+				<button class="button" onclick="queueControl('loop')">
+					<i class="fas fa-redo"></i>
+				</button>
+				<button class="button" onclick="queueControl('single')">
+					<i class="fas fa-step-forward"></i>
+				</button>
+			</div>
+			<div class="queue-action">
+				<select id="action-type" onchange="toggleActionFields()">
+					<option value="move">Move</option>
+					<option value="scan">Scan</option>
+				</select><br />
+				<div id="move-fields">
+					Direction:
+					<select id="direction">
+						<option value="FORWARD">Forward</option>
+						<option value="BACK">Back</option>
+						<option value="FORWARD_LEFT">Forward Left</option>
+						<option value="FORWARD_RIGHT">Forward Right</option>
+						<option value="BACK_LEFT">Back Left</option>
+						<option value="BACK_RIGHT">Back Right</option>
+						<option value="ROTATE_LEFT">Rotate Left</option>
+						<option value="ROTATE_RIGHT">Rotate Right</option>
+					</select><br />
+					Speed:
+					<input type="range" min="0" max="1" step="0.01" value="0.5"
+						oninput="document.getElementById('speedValue').innerText=this.value;" /><span
+						id="speedValue">0.5</span><br />
+					Duration:
+					<input type="range" id="duration" min="0" max="10" step="0.1" value="1"
+						oninput="document.getElementById('durationValue').innerText=this.value;" /><span
+						id="durationValue">1</span><br />
+				</div>
+			</div>
+			<button class="button" onclick="queueAction()">Queue Action</button>
+		</div>
+		<div class="queue-items">
+			<h2>Movement Queue</h2>
+			<div class="queue-list" id="queue-list">
+				<!-- Movement queue items will be populated here -->
+			</div>
+		</div>
+	</div>
+	<script>
+		class WSManager {
+			constructor(hostname = location.hostname, port = ":80") {
+				this.ws = new WebSocket("ws://" + hostname + port);
+				this.ws.onopen = function () {
+					console.log("Connected to Pico W");
+				};
+
+				this.ws.onmessage = function (event) {
+					console.log(event.data);
+				};
+
+				this.ws.onclose = function () {
+					console.log("Disconnected from Pico W");
+				};
+			}
+			send_message(command_type, command, args) {
+				console.log(command_type);
+				console.log(command);
+				console.log(JSON.stringify(args));
+
+				let message = `${command_type}:${command}`;
+				if (args) message += `:${JSON.stringify(args)}`;
+				this.send(message)
+			}
+			send(message) {
+				this.ws.send(message + ";")
+			}
+
+		}
+		class Robot {
+			constructor(ws_manager) {
+				this.ws_manager = ws_manager
+			}
+			forward(speed = 1.0) {
+				let args = { 'speed': speed }
+				this.ws_manager.send_message(2, 0, args)
+			}
+			back(speed = 1.0) {
+				let args = { 'speed': speed }
+				this.ws_manager.send_message(2, 1, args)
+			}
+			forward_left(speed = 1.0) {
+				let args = { 'speed': speed }
+				this.ws_manager.send_message(2, 2, args)
+			}
+			forward_right(speed = 1.0) {
+				let args = { 'speed': speed }
+				this.ws_manager.send_message(2, 3, args)
+			}
+			back_left(speed = 1.0) {
+				let args = { 'speed': speed }
+				this.ws_manager.send_message(2, 4, args)
+			}
+			back_right(speed = 1.0) {
+				let args = { 'speed': speed }
+				this.ws_manager.send_message(2, 5, args)
+			}
+			rotate_left(speed = 1.0) {
+				let args = { 'speed': speed }
+				this.ws_manager.send_message(2, 6, args)
+			}
+			rotate_right(speed = 1.0) {
+				let args = { 'speed': speed }
+				this.ws_manager.send_message(2, 7, args)
+			}
+			stop(speed = null) {
+				this.ws_manager.send_message(2, 8, null)
+			}
+			scan(speed = null) {
+				this.ws_manager.send_message(1, 1, null)
+			}
+			set_np(r, g, b, duration = 0) {
+				let args = {
+					'r': r,
+					'g': g,
+					'b': b,
+					'duration': duration
+				}
+				this.ws_manager.send_message(4, 0, args)
+			}
+			move_servo(angle, freq = 50) {
+				let args = {
+					'angle': angle,
+					'freq': freq
+				}
+				this.ws_manager.send_message(3, 7, args)
+			}
+			get_distance() {
+				this.ws_manager.send_message(1, 0, null)
+			};
+			beep(frequency, duration, volume = 100) {
+				let args = {
+					'freq': frequency,
+					'duration': duration,
+					'volume': volume
+				}
+				this.ws_manager.send_message(4, 1, args)
+			};
+			set_led(value) {
+				this.ws_manager.send_message(4, (value) ? 2 : 3, null)
+			}
+
+		}
+		let pico_socket = new WSManager();
+		let robot = new Robot(pico_socket);
+
+		document.addEventListener('DOMContentLoaded', function () {
+			let keysPressed = {};
+
+			document.addEventListener('keydown', function (event) {
+				if (!keysPressed[event.key]) {
+					keysPressed[event.key] = true;
+					move(getDirection());
+				}
+			});
+
+			document.addEventListener('keyup', function (event) {
+				delete keysPressed[event.key];
+				if (Object.keys(keysPressed).length === 0) {
+					move('STOP');
+				} else {
+					move(getDirection());
+				}
+			});
+
+
+			function getDirection() {
+				if (keysPressed['ArrowUp'] && keysPressed['ArrowRight']) {
+					return 'FORWARD_RIGHT';
+				}
+				if (keysPressed['ArrowUp'] && keysPressed['ArrowLeft']) {
+					return 'FORWARD_LEFT';
+				}
+				if (keysPressed['ArrowDown'] && keysPressed['ArrowRight']) {
+					return 'BACK_RIGHT';
+				}
+				if (keysPressed['ArrowDown'] && keysPressed['ArrowLeft']) {
+					return 'BACK_LEFT';
+				}
+				if (keysPressed['ArrowUp']) {
+					return 'FORWARD';
+				}
+				if (keysPressed['ArrowRight']) {
+					return 'ROTATE_RIGHT';
+				}
+				if (keysPressed['ArrowDown']) {
+					return 'BACK';
+				}
+				if (keysPressed['ArrowLeft']) {
+					return 'ROTATE_LEFT';
+				}
+				return 'STOP';
+			}
+
+		});
+
+		function get_speed() {
+			let speed = parseFloat(document.getElementById("speed").value);
+			if (!speed) speed = 1.0;
+			return speed;
+		}
+
+		function toggleActionFields() {
+			const actionType = document.getElementById("action-type").value;
+			const moveFields = document.getElementById("move-fields");
+			moveFields.style.display = actionType === "move" ? "block" : "none";
+		}
+
+		function queueAction() {
+			const actionType = document.getElementById("action-type").value;
+			const data = { type: actionType };
+			if (actionType === "move") {
+				data.direction = document.getElementById("direction").value;
+				data.speed = document.getElementById("speed").value;
+				data.duration = document.getElementById("duration").value;
+			}
+			sendRequest("POST", "/queue/actions", data);
+		}
+
+		toggleActionFields();
+
+		function setLED(value) {
+			robot.set_led(value);
+		}
+
+		function sendScan() {
+			robot.scan();
+		}
+
+		function move(direction) {
+			let speed = get_speed();
+			switch (direction) {
+				case 'STOP':
+					robot.stop();
+					break;
+				case 'FORWARD_LEFT':
+					robot.forward_left(speed)
+					break;
+				case 'FORWARD':
+					robot.forward(speed)
+					break;
+				case 'FORWARD_RIGHT':
+					robot.forward_right(speed)
+					break;
+				case 'ROTATE_LEFT':
+					robot.rotate_left(speed)
+					break;
+				case 'ROTATE_RIGHT':
+					robot.rotate_right(speed)
+					break;
+				case 'BACK_LEFT':
+					robot.back_left(speed)
+					break;
+				case 'BACK':
+					robot.back(speed)
+					break;
+				case 'BACK_RIGHT':
+					robot.back_right(speed)
+					break;
+			}
+		}
+
+		function stop() {
+			robot.stop();
+		}
+
+		function queueControl(control) {
+			const data = { control };
+			sendRequest("POST", "/queue/control", data);
+		}
+
+		function executeCode() {
+			const code = document.getElementById("code-input").value;
+			const data = { code: code };
+			sendRequest("POST", "/pico/code", data);
+		}
+
+		function sendRequest(method, endpoint, data = null) {
+			const options = {
+				method,
+				headers: {},
+				body: data ? JSON.stringify(data) : null,
+			};
+
+			if (data) {
+				options.headers["Content-Type"] = "application/json";
+			}
+
+			console.log("Tried request: ", endpoint, options);
+
+			// reminant from old method, will be adapted to socket method later
+
+			//fetch(endpoint, options)
+			//	.then((response) => response.json())
+			//	.then((data) => console.log(data))
+			//	.catch((error) => console.error("Error:", error));
+		}
+	</script>
+</body>
+
+</html>

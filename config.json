@@ -12,10 +12,7 @@
         "timeout_msec": 10000
     }],
     "server_info": {
-        "ip": "192.168.1.202",
-        "client_port": "5001",
-        "socket_port": "5000",
-        "socket_endpoint": "/pico/",
-        "socket_delay_ms": 5
+        "ip": "192.168.1.200",
+        "socket_port": "80"
     }
 }

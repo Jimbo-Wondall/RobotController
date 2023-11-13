@@ -1,23 +1,27 @@
 import ble_peripheral
-import web_socket
+#import web_socket
 from config_manager import NetworkCredential, get_config_manager
 import uasyncio as a
 import usocket
-import utime
+import time
 import json
+import webserver
 import network as net
 from robot_commands import *
 
 class CommunicationManager:
     def __init__(self, main, controller):
+        self.deadline = time.ticks_add(time.ticks_ms(), 300)
+        self.server = webserver.TestServer(self.handle_message)
         self.main = main
         self.controller = controller
         self.config = get_config_manager()
         self.saved_networks = self.config.config.saved_networks
         self.wifi = net.WLAN(net.STA_IF)
         self.auto_connect_wifi()
+        self.server.start()
         self.blesocket = ble_peripheral.BLESocket(self.handle_message)
-        self.web_controller = web_socket.WebSocket(self.handle_message)
+        #self.web_controller = web_socket.WebSocket(self.handle_message)
     
     def auto_connect_wifi(self):
         print("Auto connecting...")
@@ -43,11 +47,11 @@ class CommunicationManager:
             try:
                 print("Attempt {}/{}".format(creds.attempts - attempts + 1, creds.attempts))
                 self.wifi.connect(creds.ssid, creds.password)
-                start_time = utime.ticks_ms()
-                while self.wifi.status() == net.STAT_CONNECTING and a.ticks_diff(utime.ticks_ms(), start_time) < creds.timeout_msec:
+                start_time = time.ticks_ms()
+                while self.wifi.status() == net.STAT_CONNECTING and a.ticks_diff(time.ticks_ms(), start_time) < creds.timeout_msec:
                     await a.sleep_ms(100)
-                start_time = utime.ticks_ms()
-                while self.wifi.status() == 2 and a.ticks_diff(utime.ticks_ms(), start_time) < 20000:
+                start_time = time.ticks_ms()
+                while self.wifi.status() == 2 and a.ticks_diff(time.ticks_ms(), start_time) < 20000:
                     await a.sleep_ms(100)
                 print("Attempt failed", self.wifi.status())
             except Exception as e:
@@ -98,11 +102,11 @@ class CommunicationManager:
         except:
             args = None
         return int(command_type), int(command), args
-        
     
     async def run(self):
-        if not self.web_controller.isconnected():
-            await self.web_controller.run_socket()
+        self.server.process_all()
+        if time.ticks_diff(self.deadline, time.ticks_ms()) < 0:
+            self.deadline = time.ticks_add(time.ticks_ms(), 100000)
 
 class CommandFactory:
     def create(self, command_type, command, args):
@@ -128,7 +132,7 @@ class CommandFactory:
             direction = self.to_string(command_type, command)[1].lower()
             if direction is not 'unknown':
                 speed = 1.0
-                if 'speed' in args:
+                if args and 'speed' in args:
                     speed = int(args['speed'])
                 return MoveCommand(direction, speed)
         

@@ -1,3 +1,4 @@
+import json
 from config_manager import get_config_manager
 
 class CommandType:
@@ -131,17 +132,15 @@ class GetDepthCommand(RobotCommand):
         value = hw_interface.get_distance()
         if value is None:
             value = "Error"
-        return value
+        return "SCAN_RESULT {}".format(value)
 
 class ScanCommand(RobotCommand):
     def execute(self, hw_interface):
         pass1, pass2 = hw_interface.scan()
-        return '''
-        {
-            "pass1": {},
-            "pass2": {}
-        }
-        '''.format(pass1, pass2)
+        print(str(pass1), str(pass2))
+        result = "SCAN_RESULT {}:{}".format(str(pass1), str(pass2))
+        print(result)
+        return result
 
 class SetLedCommand(RobotCommand):
     def __init__(self, state:bool):
