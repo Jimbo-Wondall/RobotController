@@ -244,11 +244,13 @@ class HardwareInterface:
             time.sleep_ms(10)
             distance = self.get_distance()
             measurements_pass_1.append(distance)
-        
+        print(measurements_pass_1)
         for angle in range(end_angle, start_angle - 1, -step):
             self.move_servo(angle)
             time.sleep_ms(10)
             distance = self.get_distance()
             measurements_pass_2.append(distance)
         self.move_servo(SERVO_CENTER)
+        print(measurements_pass_2)
+
         return measurements_pass_1, measurements_pass_2
